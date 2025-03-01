@@ -28,9 +28,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _animationController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
-      lowerBound: 0.0,
-      upperBound: 1.0,
     )..repeat(reverse: true);
+
+    _scaleAnimation = _animationController.drive(
+      Tween<double>(begin: 0.9, end: 1.0).chain(
+        CurveTween(curve: Curves.easeInOut),
+      ),
+    );
 
     _scaleAnimation = CurvedAnimation(
       parent: _animationController,
@@ -45,10 +49,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void startListeningAnimation() {
-    setState(() => _isListening = true);
+    setState(() {
+      _isListening = true;
+    });
     _animationController.forward();
+
+    // Stop listening animation after a few seconds
     Timer(const Duration(seconds: 3), () {
-      setState(() => _isListening = false);
+      setState(() {
+        _isListening = false;
+      });
       _animationController.reset();
     });
   }
@@ -61,77 +71,93 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _sendMessage(String message) {
+    if (message.isEmpty) return;
+
+    setState(() {
+      chatProvider.addMessage("User: $message");
+    });
+
+    startListeningAnimation();
+
+    // Simulating AI response
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        chatProvider.addMessage("Assistant: I received your message!");
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: Drawer(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue, Colors.pink],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Center(
-                child: Text(
-                  "Settings",
-                  style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text("Select Language"),
-              trailing: DropdownButton<String>(
-                value: _selectedLanguage,
-                items: ["English", "Punjabi", "French", "German", "Hindi"]
-                    .map((lang) => DropdownMenuItem(value: lang, child: Text(lang)))
-                    .toList(),
-                onChanged: _changeLanguage,
-              ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(widget.isDarkMode ? Icons.dark_mode : Icons.light_mode),
-              title: const Text("Toggle Theme"),
-              onTap: widget.toggleTheme,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text("About"),
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text("About AI Assistant"),
-                    content: const Text("This is an AI-powered chatbot application."),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))
-                    ],
+      drawer: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Drawer(
+          child: Column(
+            children: [
+              // Gradient Drawer Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue, Colors.blueAccent], // Same as chat bubbles
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                );
-              },
-            ),
-          ],
+                ),
+                child: const Center(
+                  child: Text(
+                    "VOX",
+                    style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(widget.isDarkMode ? Icons.dark_mode : Icons.light_mode),
+                ),
+                title: const Text("Toggle Theme"),
+                onTap: widget.toggleTheme,
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text("About"),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("VOX",style: TextStyle(fontStyle: FontStyle.italic,fontWeight: FontWeight.bold),),
+                      content: const Text("This is an AI-powered Assistant Application."),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK",style: TextStyle(color: Colors.blueAccent),))
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
       appBar: AppBar(
         title: Text(
-          _isListening ? "Listening..." : "Assistant",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.black),
+          "VOX",
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 25, color: Colors.lightBlue),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white, //
+        backgroundColor: Colors.white,
         elevation: 2,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
+            icon: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: const Icon(Icons.menu, color: Colors.black),
+            ),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -141,9 +167,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(right: 16.0),
             child: ScaleTransition(
               scale: _scaleAnimation,
-              child: const CircleAvatar(
-                backgroundColor: Colors.blue,
-                radius: 8,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: const CircleAvatar(
+                  backgroundColor: Colors.blue, // Alexa-style pulsing dot
+                  radius: 8,
+                ),
               ),
             ),
           )
@@ -158,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
       body: Container(
-        color: widget.isDarkMode ? Colors.black : Colors.white, //
+        color: widget.isDarkMode ? Colors.black : Colors.white, // Solid background
         child: Column(
           children: [
             Expanded(
@@ -175,12 +204,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             InputBar(
-              onSend: (message) {
-                setState(() {
-                  chatProvider.addMessage("User: $message");
-                  startListeningAnimation();
-                });
-              },
+              onSend: (message) => _sendMessage(message),
             ),
           ],
         ),

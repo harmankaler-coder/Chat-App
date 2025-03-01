@@ -1,48 +1,23 @@
-import 'package:assist/screens/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
-import 'package:screen_retriever/screen_retriever.dart';
+import 'screens/home_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
-
-  windowManager.waitUntilReadyToShow().then((_) async {
-    final screenSize = await getScreenSize();
-    const windowSize = Size(380, 720);
-
-    final position = Offset(
-      screenSize.width - windowSize.width,
-      screenSize.height - windowSize.height,
-    );
-
-    await windowManager.setSize(windowSize);
-    await windowManager.setPosition(position);
-    await windowManager.setAlwaysOnTop(true);
-    await windowManager.show();
-  });
-
+void main() {
   runApp(const MyApp());
-}
-
-Future<Size> getScreenSize() async {
-  final screen = await screenRetriever.getPrimaryDisplay();
-  return Size(screen.size.width.toDouble(), screen.size.height.toDouble());
 }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  _MyAppState createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  bool isDarkMode = false;
+  bool _isDarkMode = false;
 
-  void toggleTheme() {
+  void _toggleTheme() {
     setState(() {
-      isDarkMode = !isDarkMode;
+      _isDarkMode = !_isDarkMode;
     });
   }
 
@@ -50,10 +25,20 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.black,
+      ),
       home: HomeScreen(
-        isDarkMode: isDarkMode,
-        toggleTheme: toggleTheme,
+        toggleTheme: _toggleTheme,
+        isDarkMode: _isDarkMode,
       ),
     );
   }

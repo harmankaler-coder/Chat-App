@@ -27,14 +27,17 @@ class _InputBarState extends State<InputBar> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                hintText: "Type a message...",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: "Type a message...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendMessage(),
               ),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
             ),
           ),
           const SizedBox(width: 10),
@@ -43,7 +46,7 @@ class _InputBarState extends State<InputBar> {
             child: AnimatedScale(
               scale: 1.2,
               duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.send_rounded, color: Colors.blueAccent),
+              child: const Icon(Icons.send, color: Colors.blueAccent),
             ),
           ),
         ],
