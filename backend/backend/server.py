@@ -1,48 +1,137 @@
-import fastapi
-import google.generativeai as genai
-import os
-from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
+import pyaudio
+import numpy as np
 import whisper
+import threading
+import time
 
-load_dotenv()
+# Load Whisper Model
+model = whisper.load_model("base")
 
-GENAI_API_KEY = os.getenv("GENAI_API_KEY")
+# Audio Configuration
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000  # 16kHz works best for Whisper
+CHUNK = 1024
 
-if not GENAI_API_KEY:
-    raise ValueError("Missing GENAI_API_KEY in environment variables!")
+# Voice Activity Detection Parameters
+SILENCE_THRESHOLD = 700  # Adjust based on your microphone sensitivity
+SILENCE_DURATION = 1.0  # Seconds of silence to consider speech ended
+MIN_SPEECH_DURATION = 0.5  # Minimum seconds to consider as valid speech
 
-genai.configure(api_key=GENAI_API_KEY)
+# Initialize PyAudio
+audio = pyaudio.PyAudio()
 
-app = fastapi.FastAPI()
+def is_silent(audio_data, threshold):
+    """Check if the audio chunk is below the silence threshold"""
+    return np.max(np.abs(audio_data)) < threshold
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the FastAPI & Gemini AI server!"}
+def process_audio_data(frames, sample_width):
+    """Convert audio frames to numpy array suitable for Whisper"""
+    # Join all audio frames
+    audio_data = b''.join(frames)
+    
+    # Convert to numpy array
+    audio_np = np.frombuffer(audio_data, dtype=np.int16)
+    
+    # Normalize to float32 in range [-1.0, 1.0]
+    max_int = 2**(8 * sample_width - 1)
+    audio_float32 = audio_np.astype(np.float32) / max_int
+    
+    return audio_float32
 
-@app.post("/generate/")
-async def generate_text(prompt: str):
+def speech_recognition():
+    """Record when speech is detected and transcribe after silence"""
+    print("Starting speech recognition. Speak into your microphone. (Press Ctrl+C to quit)")
+    
+    stream = audio.open(format=FORMAT,
+                       channels=CHANNELS,
+                       rate=RATE,
+                       input=True,
+                       frames_per_buffer=CHUNK)
+    
+    sample_width = audio.get_sample_size(FORMAT)
+
     try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
-        return JSONResponse(content={"response": response.text})
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
-
-@app.post("/transcribe/")
-async def transcribe_audio(file: fastapi.UploadFile):
-    try:
-        with open("temp_audio.mp3", "wb") as buffer:
-            buffer.write(await file.read())
-        
-        model = whisper.load_model("base") 
-        result = model.transcribe("temp_audio.mp3")
-        
-        os.remove("temp_audio.mp3")
-        return JSONResponse(content={"transcription": result["text"]})
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        while True:
+            # Wait for speech to start
+            print("Listening for speech...")
+            speech_detected = False
+            frames = []
+            
+            # Keep listening until speech is detected
+            while not speech_detected:
+                data = stream.read(CHUNK, exception_on_overflow=False)
+                audio_chunk = np.frombuffer(data, dtype=np.int16)
+                if not is_silent(audio_chunk, SILENCE_THRESHOLD):
+                    speech_detected = True
+                    frames.append(data)
+                    print("Speech detected! Recording...")
+                    break
+            
+            # Continue recording until silence is detected
+            silence_count = 0
+            recording_start_time = time.time()
+            
+            while True:
+                data = stream.read(CHUNK, exception_on_overflow=False)
+                frames.append(data)
+                
+                audio_chunk = np.frombuffer(data, dtype=np.int16)
+                if is_silent(audio_chunk, SILENCE_THRESHOLD):
+                    silence_count += 1
+                else:
+                    silence_count = 0
+                
+                # Check if silence duration threshold is reached
+                silence_seconds = silence_count * CHUNK / RATE
+                if silence_seconds >= SILENCE_DURATION:
+                    total_duration = time.time() - recording_start_time
+                    
+                    # Only process if speech was long enough
+                    if total_duration >= MIN_SPEECH_DURATION:
+                        break
+                    else:
+                        # Reset if it was just a short noise
+                        frames = []
+                        speech_detected = False
+                        break
+            
+            # If we have valid speech, process it
+            if speech_detected and frames:
+                print("Processing speech...")
+                
+                try:
+                    # Convert to format Whisper can use
+                    audio_float32 = process_audio_data(frames, sample_width)
+                    
+                    # Transcribe Audio directly
+                    result = model.transcribe(
+                        audio_float32,
+                        fp16=False,  # Disable FP16 for CPU
+                        language="en"  # Specify language to improve accuracy
+                    )
+                    
+                    transcription = result["text"].strip()
+                    
+                    # Print result
+                    if transcription:
+                        print("Transcription:", transcription)
+                    else:
+                        print("No speech detected in the recording.")
+                    print("-" * 50)
+                    
+                except Exception as e:
+                    print(f"Error processing audio: {e}")
+                    import traceback
+                    traceback.print_exc()
+    
+    except KeyboardInterrupt:
+        print("\nStopping speech recognition.")
+    finally:
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+        print("Audio resources released.")
 
 def main():
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    speech_recognition()

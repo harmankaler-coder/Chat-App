@@ -11,7 +11,9 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard] (>=0.115.10,<0.116.0)",
     "ruff (>=0.9.9,<0.10.0)",
-    "python-dotenv (>=1.0.1,<2.0.0)"
+    "python-dotenv (>=1.0.1,<2.0.0)",
+    "pyaudio (>=0.2.14,<0.3.0)",
+    "numpy (==2.1.3)"
 ]
 
 
