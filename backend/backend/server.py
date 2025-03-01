@@ -176,7 +176,9 @@ functions = [
                     },
                 },
                 "required": [],
+                "additionalProperties": False,
             },
+            "strict": True,
         },
     },
     {
@@ -190,10 +192,12 @@ functions = [
                     "command": {
                         "type": "string",
                         "description": "The shell command to be executed.",
-                    },
+                    }
                 },
                 "required": [],
+                "additionalProperties": False,
             },
+            "strict": True,
         },
     },
     {
@@ -205,12 +209,14 @@ functions = [
                 "type": "object",
                 "properties": {
                     "delay": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "The delay in seconds.",
-                    },
+                    }
                 },
                 "required": [],
+                "additionalProperties": False,
             },
+            "strict": True,
         },
     },
     {
@@ -222,12 +228,14 @@ functions = [
                 "type": "object",
                 "properties": {
                     "title": {
-                        "type": "str",
+                        "type": "string",
                         "description": "The title of the window to be closed.",
-                    },
+                    }
                 },
                 "required": [],
+                "additionalProperties": False,
             },
+            "strict": True,
         },
     },
 ]
