@@ -1,0 +1,58 @@
+from typing import Callable, Dict, List
+from openai import OpenAI
+
+
+class LLMChat:
+    def __init__(
+        self,
+        api_key,
+        model="gemini-2.0-flash",
+        temperature=0.7,
+        max_tokens=512,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        functions: List[Dict] = [],
+        tool_choice: str = "required",
+    ):
+        """
+        Initializes the LLMChat instance.
+
+        :param api_key: OpenAI API key
+        :param model: Model to use
+        :param temperature: Controls randomness
+        :param max_tokens: Maximum response length
+        """
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.chat_history = []  # Stores chat history
+        self.functions = functions
+        self.tool_choice = tool_choice
+        self.client = OpenAI(api_key=self.api_key, base_url=base_url)
+
+    def chat(self, user_input):
+        """
+        Sends a user message to the model and gets a response.
+
+        :param user_input: The user's message
+        :return: The model's response
+        """
+        self.chat_history.append({"role": "user", "content": user_input})
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=self.chat_history,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            functions=self.functions,
+            tool_choice=self.tool_choice,
+        )
+
+        reply = response.choices[0].message
+        self.chat_history.append({"role": "assistant", "content": reply})
+
+        return reply
+
+    def reset_chat(self):
+        """Clears the chat history."""
+        self.chat_history = []
