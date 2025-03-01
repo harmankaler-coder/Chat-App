@@ -67,7 +67,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       drawer: Drawer(
         child: Column(
           children: [
-            // Gradient Drawer Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -90,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               title: const Text("Select Language"),
               trailing: DropdownButton<String>(
                 value: _selectedLanguage,
-                items: ["English", "Spanish", "French", "German", "Hindi"]
+                items: ["English", "Punjabi", "French", "German", "Hindi"]
                     .map((lang) => DropdownMenuItem(value: lang, child: Text(lang)))
                     .toList(),
                 onChanged: _changeLanguage,
@@ -124,11 +123,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       appBar: AppBar(
         title: Text(
-          _isListening ? "Listening..." : "AI Assistant",
+          _isListening ? "Listening..." : "Assistant",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.black),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white, // 🔹 Restored default white color
+        backgroundColor: Colors.white, //
         elevation: 2,
         leading: Builder(
           builder: (context) => IconButton(
