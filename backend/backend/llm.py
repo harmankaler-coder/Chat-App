@@ -1,5 +1,13 @@
 from typing import Callable, Dict, List
-from openai import OpenAI
+import openai
+from openai.types.chat import (
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionContentPartParam,
+)
+from openai.types.chat.chat_completion_content_part_text_param import (
+    ChatCompletionContentPartTextParam,
+)
 
 
 class LLMChat:
@@ -28,7 +36,7 @@ class LLMChat:
         self.chat_history = []  # Stores chat history
         self.functions = functions
         self.tool_choice = tool_choice
-        self.client = OpenAI(api_key=self.api_key, base_url=base_url)
+        self.client = openai.OpenAI(api_key=self.api_key, base_url=base_url)
 
     def chat(self, user_input):
         """
@@ -37,19 +45,26 @@ class LLMChat:
         :param user_input: The user's message
         :return: The model's response
         """
-        self.chat_history.append({"role": "user", "content": user_input})
+
+        print(f"User: {user_input}")
+        self.chat_history.append(
+            {
+                "role": "user",
+                "content": user_input,
+            }
+        )
 
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self.chat_history,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            functions=self.functions,
+            tools=self.functions,
             tool_choice=self.tool_choice,
         )
 
         reply = response.choices[0].message
-        self.chat_history.append({"role": "assistant", "content": reply})
+        self.chat_history.append(reply)
 
         return reply
 

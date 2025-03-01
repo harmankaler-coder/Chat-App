@@ -2,14 +2,18 @@ from typing import Callable
 import pyaudio
 import numpy as np
 import whisper
-import threading
+import json
+
+# import threading
 import time
+from backend.llm_funcs import close_window, exec_cmd, key, wait
 import llm
 import dotenv
 
-config = dotenv.load_dotenv()
+config = dotenv.dotenv_values(".env")
 
 # Load Whisper Model
+# model = whisper.load_model("turbo")  # "base")
 model = whisper.load_model("base")
 
 # Audio Configuration
@@ -19,7 +23,7 @@ RATE = 16000  # 16kHz works best for Whisper
 CHUNK = 1024
 
 # Voice Activity Detection Parameters
-SILENCE_THRESHOLD = 700  # Adjust based on your microphone sensitivity
+SILENCE_THRESHOLD = 10000  # Adjust based on your microphone sensitivity
 SILENCE_DURATION = 1.0  # Seconds of silence to consider speech ended
 MIN_SPEECH_DURATION = 0.5  # Minimum seconds to consider as valid speech
 
@@ -142,17 +146,117 @@ def speech_recognition(callback: Callable[[str], None] = None):
         audio.terminate()
 
 
+func_map = {
+    "key": key,
+    "wait": wait,
+    "close_window": close_window,
+    "exec_cmd": exec_cmd,
+}
+
+functions = [
+    {
+        "type": "function",
+        "function": {
+            "name": "key",
+            "description": "Press, hold, and release keys.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keys_press": {
+                        "type": "string",
+                        "description": "The keys to be pressed and released immediately.",
+                    },
+                    "keys_down": {
+                        "type": "string",
+                        "description": "The keys to be held down.",
+                    },
+                    "keys_up": {
+                        "type": "string",
+                        "description": "The keys to be released (should match keys held down).",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "exec_cmd",
+            "description": "Execute a shell command. You can open applications, run scripts, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The shell command to be executed.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait",
+            "description": "Wait for a specified delay before executing further commands.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "delay": {
+                        "type": "int",
+                        "description": "The delay in seconds.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "close_window",
+            "description": "Close a window.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "str",
+                        "description": "The title of the window to be closed.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+]
+
+
 class SpeechLLM:
     def __init__(self):
         self.llm = llm.LLMChat(
-            api_key=config.OPENAI_API_KEY,
-            functions=[],
-            tool_choice="required",
+            api_key=config["OPENAI_API_KEY"],
+            functions=functions,
+            tool_choice="auto",
         )
 
     def on_speech_recognised(self, transcription: str):
+        print(transcription)
+        if not transcription:
+            return
         response = self.llm.chat(transcription)
         print(response)
+
+        if (tool_calls := response.tool_calls) is not None:
+            for tool_call in tool_calls:
+                exc = input(
+                    f"LLM wants to execute function {tool_call.function.name} with args: {tool_call.function.arguments}"
+                )
+                if exc == "y":
+                    func_map[tool_call.function.name](
+                        **(json.loads(tool_call.function.arguments))
+                    )
 
     def start(self):
         speech_recognition(self.on_speech_recognised)

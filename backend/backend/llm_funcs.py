@@ -3,9 +3,6 @@ import time
 import pyautogui
 import pygetwindow
 
-# def open_app(app_name: str, args: list) -> None:
-#     process = subprocess.run(command, shell=True, capture_output=True, text=True)
-
 
 def exec_cmd(command: str) -> str:
     process = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -20,7 +17,7 @@ def close_window(title: str) -> bool:
     return False
 
 
-def control_keys(keys_press=None, keys_down=None, keys_up=None, delay=0.1):
+def key(keys_press=None, keys_down=None, keys_up=None, delay=0.1):
     """
     Simulates pressing, holding, and releasing keys using pyautogui.
 
@@ -44,7 +41,7 @@ def control_keys(keys_press=None, keys_down=None, keys_up=None, delay=0.1):
         pyautogui.keyUp(key)
 
 
-def wait(delay=1, message="") -> str:
+def wait(delay=1) -> str:
     """
     Waits for a specified delay and returns a message.
 
@@ -53,4 +50,8 @@ def wait(delay=1, message="") -> str:
     :return: The message.
     """
     time.sleep(delay)
-    return message
+    # return message
+
+
+def enable_code_mode():
+    return
