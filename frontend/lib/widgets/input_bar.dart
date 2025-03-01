@@ -43,7 +43,7 @@ class _InputBarState extends State<InputBar> {
             child: AnimatedScale(
               scale: 1.2,
               duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.send, color: Colors.blueAccent),
+              child: const Icon(Icons.send_rounded, color: Colors.blueAccent),
             ),
           ),
         ],

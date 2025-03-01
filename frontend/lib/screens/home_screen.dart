@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
 import '../providers/chat_provider.dart';
 import '../widgets/chat_list.dart';
 import '../widgets/input_bar.dart';
@@ -17,50 +16,47 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ChatProvider chatProvider = ChatProvider();
-  bool _isLoading = false;
   bool _isListening = false;
-
-  late AnimationController _waveController;
-  late Animation<Color?> _waveColorAnimation;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  String _selectedLanguage = "English";
 
   @override
   void initState() {
     super.initState();
-    _waveController = AnimationController(
-      vsync: this,
+
+    _animationController = AnimationController(
       duration: const Duration(seconds: 1),
+      vsync: this,
+      lowerBound: 0.0,
+      upperBound: 1.0,
     )..repeat(reverse: true);
 
-    _waveColorAnimation = ColorTween(
-      begin: Colors.blueAccent,
-      end: Colors.cyanAccent,
-    ).animate(_waveController);
+    _scaleAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   void dispose() {
-    _waveController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
-  void _sendMessage(String command) async {
-    if (command.isNotEmpty) {
-      setState(() {
-        chatProvider.addMessage("User: $command");
-        _isLoading = true;
-        _isListening = true;
-      });
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() {
-        _isListening = false;
-      });
+  void startListeningAnimation() {
+    setState(() => _isListening = true);
+    _animationController.forward();
+    Timer(const Duration(seconds: 3), () {
+      setState(() => _isListening = false);
+      _animationController.reset();
+    });
+  }
 
-      String response = await Future.delayed(
-          const Duration(seconds: 2), () => "Processing: $command");
-
+  void _changeLanguage(String? newLanguage) {
+    if (newLanguage != null) {
       setState(() {
-        chatProvider.addMessage("Assistant: $response");
-        _isLoading = false;
+        _selectedLanguage = newLanguage;
       });
     }
   }
@@ -68,79 +64,125 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: false,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: AnimatedBuilder(
-          animation: _waveController,
-          builder: (context, child) {
-            return Container(
-              decoration: BoxDecoration(
-                gradient: _isListening
-                    ? LinearGradient(
-                  colors: [
-                    _waveColorAnimation.value!,
-                    _waveColorAnimation.value!.withOpacity(0.7),
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                )
-                    : null,
-              ),
-              child: AppBar(
-                backgroundColor: _isListening ? Colors.transparent : (widget.isDarkMode ? Colors.black : Colors.white),
-                elevation: 5,
-                title: Text(
-                  "AI Assistant",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                    color: widget.isDarkMode ? Colors.white : Colors.black,
-                  ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            // Gradient Drawer Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue, Colors.pink],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                centerTitle: true,
-                leading: IconButton(
-                  icon: Icon(Icons.menu, color: widget.isDarkMode ? Colors.white : Colors.black87),
-                  onPressed: () {},
-                ),
-                actions: [
-                  IconButton(
-                    icon: Icon(
-                      widget.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                      color: widget.isDarkMode ? Colors.yellow : Colors.blue,
-                    ),
-                    onPressed: widget.toggleTheme,
-                  ),
-                ],
               ),
-            );
-          },
+              child: const Center(
+                child: Text(
+                  "Settings",
+                  style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text("Select Language"),
+              trailing: DropdownButton<String>(
+                value: _selectedLanguage,
+                items: ["English", "Spanish", "French", "German", "Hindi"]
+                    .map((lang) => DropdownMenuItem(value: lang, child: Text(lang)))
+                    .toList(),
+                onChanged: _changeLanguage,
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(widget.isDarkMode ? Icons.dark_mode : Icons.light_mode),
+              title: const Text("Toggle Theme"),
+              onTap: widget.toggleTheme,
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text("About"),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("About AI Assistant"),
+                    content: const Text("This is an AI-powered chatbot application."),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: widget.isDarkMode
-                ? [Colors.black, Colors.grey[900]!]
-                : [Colors.white, Colors.grey[200]!],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      appBar: AppBar(
+        title: Text(
+          _isListening ? "Listening..." : "AI Assistant",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.black),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white, // 🔹 Restored default white color
+        elevation: 2,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
+        actions: [
+          _isListening
+              ? Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: const CircleAvatar(
+                backgroundColor: Colors.blue,
+                radius: 8,
+              ),
+            ),
+          )
+              : const SizedBox.shrink(),
+          IconButton(
+            icon: Icon(
+              widget.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              color: Colors.black,
+            ),
+            onPressed: widget.toggleTheme,
+          ),
+        ],
+      ),
+      body: Container(
+        color: widget.isDarkMode ? Colors.black : Colors.white, //
         child: Column(
           children: [
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 10.0),
-                child: ChatList(chatHistory: chatProvider.chatHistory, isDarkMode: widget.isDarkMode),
+              child: ChatList(
+                chatHistory: chatProvider.chatHistory,
+                isDarkMode: widget.isDarkMode,
               ),
             ),
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text("AI is typing...", style: TextStyle(fontSize: 16, color: Colors.grey)),
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                "Press Enter to Send",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
-            InputBar(onSend: _sendMessage),
+            ),
+            InputBar(
+              onSend: (message) {
+                setState(() {
+                  chatProvider.addMessage("User: $message");
+                  startListeningAnimation();
+                });
+              },
+            ),
           ],
         ),
       ),
