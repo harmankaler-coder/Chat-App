@@ -9,6 +9,8 @@ from openai.types.chat.chat_completion_content_part_text_param import (
     ChatCompletionContentPartTextParam,
 )
 
+from backend.conn import Connection
+
 
 class LLMChat:
     def __init__(
@@ -20,6 +22,7 @@ class LLMChat:
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         functions: List[Dict] = [],
         tool_choice: str = "required",
+        connection: Connection = None,
     ):
         """
         Initializes the LLMChat instance.
@@ -37,6 +40,8 @@ class LLMChat:
         self.functions = functions
         self.tool_choice = tool_choice
         self.client = openai.OpenAI(api_key=self.api_key, base_url=base_url)
+        self.connection = connection
+        self.response_id = 0
 
     def chat(self, user_input):
         """
@@ -46,7 +51,9 @@ class LLMChat:
         :return: The model's response
         """
 
-        print(f"User: {user_input}")
+        self.connection.send(
+            b"USR" + self.response_id.to_bytes(4, "big") + user_input.encode("utf-8")
+        )
         self.chat_history.append(
             {
                 "role": "user",
@@ -61,7 +68,16 @@ class LLMChat:
             max_tokens=self.max_tokens,
             tools=self.functions,
             tool_choice=self.tool_choice,
+            stream=True,
         )
+
+        for chunk in response:
+            if chunk.choices[0].delta.content is not None:
+                self.connection.send(
+                    b"LLM"
+                    + self.response_id.to_bytes(4, "big")
+                    + chunk.choices[0].delta.content.encode("utf-8")
+                )
 
         reply = response.choices[0].message
         self.chat_history.append(reply)
